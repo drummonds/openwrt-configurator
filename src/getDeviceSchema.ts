@@ -65,7 +65,8 @@ export const getDeviceSchema = async ({
               } as const;
             }),
             ...(!boardJson.network.lan.ports &&
-            boardJson.network.lan.device === "lan"
+            (boardJson.network.lan.device === "lan" ||
+              boardJson.network.lan.device === "eth0")
               ? [
                   {
                     name: boardJson.network.lan.device,
