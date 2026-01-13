@@ -57,7 +57,6 @@ archives:
           - zip
     files:
       - README.md
-      - LICENSE*
       - TESTING.md
 
 checksum:
@@ -68,7 +67,7 @@ snapshot:
 
 changelog:
   sort: asc
-  use: github
+  use: git
   filters:
     exclude:
       - '^docs:'
@@ -112,9 +111,15 @@ release:
     Download the appropriate binary for your platform below and extract it to your PATH.
 
   footer: |
+    {{- if .PreviousTag }}
     ### Full Changelog
 
     See all changes at: https://github.com/drummonds/openwrt-configurator/compare/{{ .PreviousTag }}...{{ .Tag }}
+    {{- else }}
+    ### Initial Release
+
+    This is the first release of OpenWRT Configurator.
+    {{- end }}
 
 # Homebrew tap (optional - requires separate tap repository)
 # brews:

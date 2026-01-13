@@ -117,13 +117,22 @@ task release
 To create a new release:
 
 ```sh
+# Commit all changes first
+git add .
+git commit -m "Prepare for release"
+
 # Create and push a new version tag
 git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin main
 git push origin v0.1.0
 
 # Build and publish the release
+# Note: Requires GITHUB_TOKEN environment variable
+export GITHUB_TOKEN="your_github_token"
 task release
 ```
+
+For the first release, the changelog will show "Initial Release". Subsequent releases will show a comparison with the previous tag.
 
 ### Installation
 
