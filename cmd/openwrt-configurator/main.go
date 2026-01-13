@@ -213,7 +213,7 @@ Usage:
   openwrt-configurator export-config [flags]
 
 Flags:
-  -model string     Device model ID (required, e.g., ubnt,edgerouter-x)
+  -model string     Device model ID (optional, auto-detected from device)
   -ip string        Device IP address (required)
   -user string      SSH username (default "root")
   -pass string      SSH password (required)
@@ -221,10 +221,13 @@ Flags:
   -h, --help        Show help
 
 Examples:
-  # Export to stdout
-  openwrt-configurator export-config -model ubnt,edgerouter-x -ip 192.168.1.1 -pass mypassword
+  # Export to stdout (model auto-detected)
+  openwrt-configurator export-config -ip 192.168.1.1 -pass mypassword
 
   # Export to file
+  openwrt-configurator export-config -ip 192.168.1.1 -pass mypassword -output config.json
+
+  # Export with explicit model ID (for verification)
   openwrt-configurator export-config -model ubnt,edgerouter-x -ip 192.168.1.1 -pass mypassword -output config.json
 `)
 	}
@@ -234,10 +237,6 @@ Examples:
 	}
 
 	// Validate required flags
-	if *modelID == "" {
-		fs.Usage()
-		return fmt.Errorf("required flag: -model")
-	}
 	if *ipAddr == "" {
 		fs.Usage()
 		return fmt.Errorf("required flag: -ip")

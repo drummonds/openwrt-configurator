@@ -277,3 +277,58 @@ func TestReadInstalledPackages(t *testing.T) {
 		}
 	}
 }
+
+func TestExportConfigAutoDetectModel(t *testing.T) {
+	// Test that model ID is auto-detected when not provided
+	mockClient := ssh.NewMockClient("tplink,eap245-v3")
+
+	// Save the original responses
+	boardJSONResponse, _ := mockClient.Execute("cat /etc/board.json")
+	packagesResponse, _ := mockClient.Execute("opkg list-installed")
+
+	// Configure mock to respond to UCI commands
+	mockClient.OnExecute = func(command string) (string, error) {
+		switch {
+		case command == "cat /etc/board.json":
+			return boardJSONResponse, nil
+		case command == "uci show system":
+			return `system.@system[0]=system
+system.@system[0].hostname='auto-detect-test'
+`, nil
+		case command == "uci show network":
+			return `network.lan=interface
+network.lan.proto='static'
+network.lan.device='br-lan'
+network.lan.ipaddr='192.168.1.1'
+`, nil
+		case command == "uci show wireless":
+			return "", nil
+		case command == "uci show dropbear":
+			return "", nil
+		case command == "opkg list-installed":
+			return packagesResponse, nil
+		default:
+			return "", nil
+		}
+	}
+
+	// Export configuration WITHOUT providing model ID (empty string)
+	oncConfig, err := ExportConfigFromClient(mockClient, "", "192.168.1.1", "root", "password")
+	if err != nil {
+		t.Fatalf("Failed to export config: %v", err)
+	}
+
+	// Verify that model ID was auto-detected
+	if len(oncConfig.Devices) != 1 {
+		t.Fatalf("Expected 1 device, got %d", len(oncConfig.Devices))
+	}
+
+	device := oncConfig.Devices[0]
+	if device.ModelID != "tplink,eap245-v3" {
+		t.Errorf("Expected auto-detected model ID 'tplink,eap245-v3', got '%s'", device.ModelID)
+	}
+
+	if device.Hostname != "auto-detect-test" {
+		t.Errorf("Expected hostname 'auto-detect-test', got '%s'", device.Hostname)
+	}
+}

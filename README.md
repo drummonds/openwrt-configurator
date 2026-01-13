@@ -155,10 +155,10 @@ task install:local
 Export configuration from your existing OpenWRT device:
 
 ```sh
-$ openwrt-configurator export-config -model ubnt,edgerouter-x -ip 192.168.1.1 -pass mypassword -output network-config.json
+$ openwrt-configurator export-config -ip 192.168.1.1 -pass mypassword -output network-config.json
 ```
 
-This will read the current configuration from your device and save it as JSON, which you can then modify and use to provision other devices.
+The device model will be auto-detected from the device. This will read the current configuration from your device and save it as JSON, which you can then modify and use to provision other devices.
 
 ### Option 2: Start from scratch
 

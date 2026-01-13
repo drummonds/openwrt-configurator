@@ -11,6 +11,7 @@ import (
 )
 
 // ExportConfig reads configuration from an OpenWRT device and exports it as JSON
+// If modelID is empty, it will be auto-detected from the device's board.json
 func ExportConfig(modelID, ipAddr, username, password string) (*config.ONCConfig, error) {
 	// Connect to device
 	client, err := ssh.Connect(ipAddr, username, password)
@@ -23,8 +24,9 @@ func ExportConfig(modelID, ipAddr, username, password string) (*config.ONCConfig
 }
 
 // ExportConfigFromClient reads configuration from an OpenWRT device using an existing SSH client
+// If modelID is empty, it will be auto-detected from the device's board.json
 func ExportConfigFromClient(client ssh.SSHExecutor, modelID, ipAddr, username, password string) (*config.ONCConfig, error) {
-	// Get board.json to verify device
+	// Get board.json to detect/verify device model
 	boardOutput, err := client.Execute("cat /etc/board.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read board.json: %w", err)
@@ -33,6 +35,11 @@ func ExportConfigFromClient(client ssh.SSHExecutor, modelID, ipAddr, username, p
 	var boardJSON device.BoardJSON
 	if err := json.Unmarshal([]byte(boardOutput), &boardJSON); err != nil {
 		return nil, fmt.Errorf("failed to parse board.json: %w", err)
+	}
+
+	// Auto-detect model ID if not provided
+	if modelID == "" {
+		modelID = boardJSON.Model.ID
 	}
 
 	// Read system configuration
