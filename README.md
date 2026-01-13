@@ -2,6 +2,10 @@
 
 OpenWrt Configurator is a CLI tool and corresponding JSON config file which lets you specify the entire state of your network including UCI configuration, packages and firmware versions in a single UCI-like JSON config file which can be provisioned to your OpenWrt devices using OpenWrt Configurator.
 
+This is a hard fork of https://github.com/jasrusable/ which has been rewritten in go
+as I want to minimise the amount of languages and complexity of my tooling.
+
+
 ```sh
 $ openwrt-configurator provision ./network-config.json
 ```
@@ -52,11 +56,106 @@ The JSON config file can be conditionally composed with `.if` and/or `.overrides
 - JSON file migrations to keep your JSON file up-to-date with any UCI configuration changes/updates.
 - Build and flash sysupgrade images to your OpenWrt devices based on your JSON config file.
 
+## Development
+
+This project uses [Task](https://taskfile.dev) for build automation. To install Task:
+
+```sh
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+```
+
+### Common tasks
+
+```sh
+# Build the application
+task build
+
+# Run all tests
+task test
+
+# Run tests with coverage
+task test:coverage
+
+# Run checks (fmt, vet, test)
+task check
+
+# Clean build artifacts
+task clean
+
+# Build for all platforms
+task build:all
+```
+
+View all available tasks with:
+```sh
+task --list
+```
+
+For detailed help:
+```sh
+task help
+```
+
+### Release tasks
+
+The project uses [GoReleaser](https://goreleaser.com/) for multi-platform releases:
+
+```sh
+# Check goreleaser configuration
+task release:check
+
+# Build release binaries without publishing
+task release:build
+
+# Build a snapshot release (no publish)
+task release:snapshot
+
+# Create and publish a new release (requires git tag)
+task release
+```
+
+To create a new release:
+
+```sh
+# Create and push a new version tag
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+
+# Build and publish the release
+task release
+```
+
+### Installation
+
+Users can install the latest release with:
+
+```sh
+curl -sfL https://raw.githubusercontent.com/drummonds/openwrt-configurator/main/install.sh | sh
+```
+
+Or install locally from source:
+
+```sh
+task install:local
+```
+
 ## Getting started
 
-1. Download OpenWrt Configurator from the [GitHub Releases page](https://github.com/jasrusable/openwrt-configurator/releases).
+### Option 1: Start from an existing device (recommended)
 
-2. Download a [sample configuration file](https://github.com/jasrusable/openwrt-configurator/tree/main/sampleConfigs).
+Export configuration from your existing OpenWRT device:
+
+```sh
+$ openwrt-configurator export-config -model ubnt,edgerouter-x -ip 192.168.1.1 -pass mypassword -output network-config.json
+```
+
+This will read the current configuration from your device and save it as JSON, which you can then modify and use to provision other devices.
+
+### Option 2: Start from scratch
+
+1. Download OpenWrt Configurator from the [GitHub Releases page](https://github.com/drummonds/openwrt-configurator/releases).
+
+2. Download a [sample configuration file](https://github.com/drummonds/openwrt-configurator/tree/main/sampleConfigs).
 
 3. Adjust your configuration file as needed.
 

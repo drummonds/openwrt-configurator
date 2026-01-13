@@ -110,3 +110,22 @@ artifacts
 .DS_store
 
 configs
+
+# Go build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test artifacts
+*.test
+coverage.out
+coverage.html
+
+# Go vendor
+vendor/
+
+# GoReleaser
+dist/
