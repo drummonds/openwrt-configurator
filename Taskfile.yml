@@ -1,0 +1,252 @@
+version: '3'
+
+vars:
+  BINARY_NAME: openwrt-configurator
+  BUILD_DIR: ./bin
+  MAIN_PATH: ./cmd/openwrt-configurator
+  GO_FILES:
+    sh: find . -type f -name '*.go' -not -path "./vendor/*"
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  build:
+    desc: Build the application
+    sources:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.BUILD_DIR}}/{{.BINARY_NAME}}'
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  build:linux:
+    desc: Build for Linux
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=linux GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PATH}}
+
+  build:darwin:
+    desc: Build for macOS
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=darwin GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PATH}}
+      - GOOS=darwin GOARCH=arm64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PATH}}
+
+  build:windows:
+    desc: Build for Windows
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=windows GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe {{.MAIN_PATH}}
+
+  build:all:
+    desc: Build for all platforms
+    cmds:
+      - task: build:linux
+      - task: build:darwin
+      - task: build:windows
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test:verbose:
+    desc: Run all tests with verbose output
+    cmds:
+      - go test -v ./...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated at coverage.html"
+
+  test:provision:
+    desc: Run provision tests only
+    cmds:
+      - go test -v ./internal/provision/
+
+  test:watch:
+    desc: Watch for changes and run tests
+    cmds:
+      - |
+        echo "Watching for changes..."
+        while true; do
+          inotifywait -q -r -e modify,create,delete --include '\.go$' . 2>/dev/null || {
+            echo "inotifywait not available, using simple loop..."
+            sleep 2
+          }
+          clear
+          echo "Running tests..."
+          go test ./...
+          echo "---"
+          echo "Waiting for changes..."
+        done
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run golangci-lint (requires golangci-lint to be installed)
+    cmds:
+      - golangci-lint run ./...
+
+  tidy:
+    desc: Tidy Go modules
+    cmds:
+      - go mod tidy
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -rf dist/
+      - rm -f coverage.out coverage.html
+      - find . -name '*.test' -delete
+
+  install:
+    desc: Install the binary to $GOPATH/bin
+    deps: [build]
+    cmds:
+      - go install {{.MAIN_PATH}}
+
+  install:local:
+    desc: Install the binary to /usr/local/bin
+    deps: [build]
+    cmds:
+      - sudo cp {{.BUILD_DIR}}/{{.BINARY_NAME}} /usr/local/bin/{{.BINARY_NAME}}
+      - sudo chmod +x /usr/local/bin/{{.BINARY_NAME}}
+      - echo "Installed to /usr/local/bin/{{.BINARY_NAME}}"
+
+  run:
+    desc: Build and run the application
+    deps: [build]
+    cmds:
+      - ./{{.BUILD_DIR}}/{{.BINARY_NAME}} {{.CLI_ARGS}}
+
+  dev:
+    desc: Run application in development mode (builds and runs)
+    cmds:
+      - task: clean
+      - task: build
+      - task: test
+      - echo "Build and tests successful!"
+
+  check:
+    desc: Run all checks (fmt, vet, test)
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test
+      - echo "All checks passed!"
+
+  deps:
+    desc: Download dependencies
+    cmds:
+      - go mod download
+
+  deps:upgrade:
+    desc: Upgrade all dependencies
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+
+  release:snapshot:
+    desc: Build a snapshot release with goreleaser (no publish)
+    cmds:
+      - goreleaser release --snapshot --clean
+      - echo "Snapshot built in dist/ directory"
+
+  release:check:
+    desc: Check goreleaser configuration
+    cmds:
+      - goreleaser check
+
+  release:build:
+    desc: Build release binaries without publishing
+    cmds:
+      - goreleaser build --snapshot --clean
+      - echo "Binaries built in dist/ directory"
+
+  release:
+    desc: Create and publish a new release (requires git tag)
+    cmds:
+      - |
+        if [ -z "$(git tag --points-at HEAD)" ]; then
+          echo "Error: No git tag found on HEAD"
+          echo "Create a tag first: git tag -a v0.1.0 -m 'Release v0.1.0'"
+          exit 1
+        fi
+      - goreleaser release --clean
+      - echo "Release published to GitHub"
+
+  info:
+    desc: Show project information
+    cmds:
+      - echo "Binary name{{":"}} {{.BINARY_NAME}}"
+      - echo "Build directory{{":"}} {{.BUILD_DIR}}"
+      - echo "Main path{{":"}} {{.MAIN_PATH}}"
+      - echo "Go version{{":"}} $(go version)"
+      - echo "Module{{":"}} $(go list -m)"
+    silent: true
+
+  help:
+    desc: Show detailed help information
+    cmds:
+      - |
+        echo "OpenWRT Configurator - Task Runner"
+        echo ""
+        echo "Common tasks:"
+        echo "  task build          - Build the application"
+        echo "  task test           - Run all tests"
+        echo "  task test:coverage  - Run tests with coverage"
+        echo "  task check          - Run fmt, vet, and tests"
+        echo "  task clean          - Clean build artifacts"
+        echo "  task run            - Build and run the app"
+        echo ""
+        echo "Build tasks:"
+        echo "  task build:all      - Build for all platforms"
+        echo "  task build:linux    - Build for Linux"
+        echo "  task build:darwin   - Build for macOS"
+        echo "  task build:windows  - Build for Windows"
+        echo ""
+        echo "Test tasks:"
+        echo "  task test:verbose   - Run tests with verbose output"
+        echo "  task test:provision - Run provision tests only"
+        echo "  task test:coverage  - Generate coverage report"
+        echo ""
+        echo "Development tasks:"
+        echo "  task dev            - Clean, build, and test"
+        echo "  task fmt            - Format code"
+        echo "  task vet            - Run go vet"
+        echo "  task tidy           - Tidy modules"
+        echo ""
+        echo "Release tasks:"
+        echo "  task release:check    - Check goreleaser config"
+        echo "  task release:snapshot - Build snapshot (no publish)"
+        echo "  task release:build    - Build binaries only"
+        echo "  task release          - Create and publish release"
+        echo "  task install:local    - Install to /usr/local/bin"
+        echo ""
+        echo "Application commands:"
+        echo "  provision           - Provision config to devices"
+        echo "  print-uci-commands  - Print UCI commands"
+        echo "  export-config       - Export config from device"
+        echo ""
+        echo "Run 'task --list' to see all available tasks"
+    silent: true
